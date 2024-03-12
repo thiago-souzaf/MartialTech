@@ -13,7 +13,9 @@ public class TrainingManager : MonoBehaviour
 
     [SerializeField] TextMeshProUGUI socoCounter;
 	[SerializeField] TextMeshProUGUI cotoveladaCounter;
-	[SerializeField] Slider socosSlider;
+	[SerializeField] TextMeshProUGUI scoreTracker;
+
+    [SerializeField] Slider socosSlider;
 	[SerializeField] Slider cotoveladasSlider;
 
 	public int maxSocos;
@@ -22,20 +24,25 @@ public class TrainingManager : MonoBehaviour
 	public int currentSocos;
 	public int currentCotoveladas;
 
+	private int currentScore;
+
     private void Start()
     {
+		socosSlider.maxValue = maxSocos;
+		cotoveladasSlider.maxValue = maxCotoveladas;
+
 		UpdateCount();
     }
 
     public void AddStrike(string strike)
 	{
 
-		if (strike == "soco")
+		if (strike == "soco" && currentSocos < maxSocos)
 		{
 			currentSocos++;
 			UpdateCount();
 
-        } else if (strike == "cotovelada")
+        } else if (strike == "cotovelada" && currentCotoveladas < maxCotoveladas)
 		{
 			currentCotoveladas++;
 			UpdateCount();
@@ -45,17 +52,13 @@ public class TrainingManager : MonoBehaviour
 	private void UpdateCount()
 	{
 		socoCounter.text = currentSocos + "/" + maxSocos;
-		socoCounter.ForceMeshUpdate();
 		socosSlider.value = currentSocos;
 
 		cotoveladaCounter.text = currentCotoveladas + "/" + maxCotoveladas;
 		cotoveladasSlider.value = currentCotoveladas;
+
+		currentScore = (currentSocos + currentCotoveladas) * 100 / (maxSocos + maxCotoveladas);
+		scoreTracker.text = currentScore + "%";
 	}
 
-	[ContextMenu("add soco")]
-	public void AddSoco()
-	{
-        currentSocos++;
-        UpdateCount();
-    }
 }

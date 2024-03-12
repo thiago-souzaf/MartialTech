@@ -1,96 +1,93 @@
 using UnityEngine;
 using System;
-using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
+using PimDeWitte.UnityMainThreadDispatcher;
 
 public class Listener : MonoBehaviour
 {
-	public int port = 25001;
+    private TcpClient client;
+    private NetworkStream stream;
+    private byte[] receiveBuffer = new byte[1024];
 
-	private TcpListener listener;
-	private TcpClient client;
-	private NetworkStream stream;
-	private byte[] buffer = new byte[1024];
+    // Endereco IP e porta do servidor
+    private string serverIP = "127.0.0.1";
+    private int serverPort = 25002;
+
+    private TrainingManager manager;
 
     private void Start()
     {
-		StartListening();
+        // Inicia a conexão com o servidor em uma thread separada
+        Thread thread = new Thread(new ThreadStart(ConnectToServer));
+        thread.Start();
+
+        manager = TrainingManager.Instance;
     }
 
-	private void StartListening()
-	{
-		try
-		{
-			listener = new TcpListener(IPAddress.Any, port);
-			listener.Start();
+    private void ConnectToServer()
+    {
+        try
+        {
+            client = new TcpClient(serverIP, serverPort);
+            stream = client.GetStream();
 
-			Debug.Log("Waiting for a connection...");
+            // Inicia a recepção de dados
+            while (true)
+            {
+                int bytesRead = stream.Read(receiveBuffer, 0, receiveBuffer.Length);
 
-			listener.BeginAcceptTcpClient(HandleIncomingConnection, null);
-		}
-		catch (Exception ex)
-		{
-			Debug.LogError("Error starting TCP listener: "+ ex.Message);
-		}
-	}
+                if (bytesRead <= 0)
+                {
+                    // Desconectado do servidor
+                    Debug.Log("Desconectado do servidor.");
+                    break;
+                }
 
-	private void HandleIncomingConnection(IAsyncResult result)
-	{
-		client = listener.EndAcceptTcpClient(result);
-		stream = client.GetStream();
+                // Converte os bytes recebidos em uma string
+                string receivedMessage = Encoding.UTF8.GetString(receiveBuffer, 0, bytesRead);
 
-		Debug.Log("Connected");
-
-		ReceiveMessage();
-	}
+                // Imprime a mensagem no console do Unity
+                Debug.Log($"Mensagem recebida: {receivedMessage}");
 
 
-	private void ReceiveMessage()
-	{
-        Debug.Log("Start Receive Message");
-
-        stream.BeginRead(buffer, 0, buffer.Length, ReceiveCallback, null);
-        Debug.Log("End Receive Message");
-
+                UnityMainThreadDispatcher.Instance().Enqueue(() =>
+                {
+                    manager.AddStrike(receivedMessage);
+                });
+            }
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Erro ao conectar ao servidor: {e.Message}");
+        }
+        finally
+        {
+            // Fecha a conexão quando a thread for encerrada
+            if (client != null)
+                client.Close();
+        }
     }
 
-    private void ReceiveCallback(IAsyncResult result)
-	{
-		Debug.Log("Start Receive Callback");
-		Debug.Log("Start bytesRead");
-
-		int bytesRead = stream.EndRead(result);
-        Debug.Log("End bytesRead");
-
-        if (bytesRead > 0)
-		{
-			string receivedMessage = Encoding.UTF8.GetString(buffer, 0, bytesRead);
-			Debug.Log("Received message: " + receivedMessage);
-
-			byte[] response = Encoding.UTF8.GetBytes("Message received");
-			stream.Write(response, 0, response.Length);
-
-			// Continue listening for more messages
-			ReceiveMessage();
-
-			// Tratar a receivedMessage aqui
-			TrainingManager.Instance.AddStrike(receivedMessage);
-		}
-		else
-		{
-			Debug.Log("Connection closed");
-			stream.Close();
-			client.Close();
-
-			StartListening();
-		}
-        Debug.Log("End Receive Callback");
-
+    // Método para enviar mensagens ao servidor (opcional)
+    private void SendMessageToServer(string message)
+    {
+        try
+        {
+            byte[] messageBytes = Encoding.UTF8.GetBytes(message);
+            stream.Write(messageBytes, 0, messageBytes.Length);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"Erro ao enviar mensagem: {e.Message}");
+        }
     }
 
     private void OnDestroy()
     {
-        listener?.Stop();
+        // Fecha a conexão quando o objeto for destruído
+        if (client != null)
+            client.Close();
     }
 }
