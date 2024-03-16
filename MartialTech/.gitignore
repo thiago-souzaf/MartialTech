@@ -72,3 +72,10 @@ crashlytics-build.properties
 /[Aa]ssets/[Ss]treamingAssets/aa/*
 
 /[Aa]ssets/TextMesh*
+
+
+__pycache__.meta
+__pycache__
+
+Temp
+Temp.meta
