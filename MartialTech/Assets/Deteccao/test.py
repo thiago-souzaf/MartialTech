@@ -4,8 +4,6 @@ import cv2
 from connection import UnityServer
 import threading
 
-host = "127.0.0.1"
-
 def iniciar_servidor_golpes(host, port):
     global golpes_server
     golpes_server = UnityServer(host, port)
@@ -16,6 +14,7 @@ def iniciar_servidor_imagens(host, port):
     imagens_server = UnityServer(host, port)
     imagens_server.start()
 
+host = "127.0.0.1"
 # Threads para iniciar os servidores
 thread1 = threading.Thread(target=lambda: iniciar_servidor_golpes(host, 25002))
 thread2 = threading.Thread(target=lambda: iniciar_servidor_imagens(host, 25003))
@@ -54,12 +53,9 @@ while True:
     lmList, bboxInfo = detector.findPosition(img, draw=True, bboxWithHands=True)
 
     imgatual = img.copy()
+    _, img_encoded = cv2.imencode(".jpg", img)
+    imagens_server.send_image(img_encoded)
 
-    if imagens_server.is_connected:
-        _, img_encoded = cv2.imencode(".jpg", imgatual)
-
-        imagens_server.send_image(img_encoded)
-        
     # Check if any body landmarks are detected
     if lmList:
         # Get the center of the bounding box around the body
@@ -100,5 +96,5 @@ while True:
     # Display the frame in a window
     cv2.imshow("Image", imgatual)
 
-    # Wait for 1 millisecond between each frame
+    # Wait for 20 millisecond between each frame
     cv2.waitKey(20)
