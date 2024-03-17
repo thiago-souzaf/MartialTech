@@ -1,11 +1,10 @@
 using UnityEngine;
 using System;
 using System.Net.Sockets;
-using System.Text;
 using System.Threading;
 using PimDeWitte.UnityMainThreadDispatcher;
 
-public class Listener : MonoBehaviour
+public abstract class Listener : MonoBehaviour
 {
     private TcpClient client;
     private NetworkStream stream;
@@ -13,24 +12,21 @@ public class Listener : MonoBehaviour
 
     // Endereco IP e porta do servidor
     private string serverIP = "127.0.0.1";
-    private int serverPort = 25002;
-
-    private TrainingManager manager;
-
-    private void Start()
+    protected int port;
+    
+    protected virtual void Start()
     {
         // Inicia a conexão com o servidor em uma thread separada
         Thread thread = new Thread(new ThreadStart(ConnectToServer));
         thread.Start();
-
-        manager = TrainingManager.Instance;
     }
 
-    private void ConnectToServer()
+
+    protected virtual void ConnectToServer()
     {
         try
         {
-            client = new TcpClient(serverIP, serverPort);
+            client = new TcpClient(serverIP, port);
             stream = client.GetStream();
 
             // Inicia a recepção de dados
@@ -45,16 +41,9 @@ public class Listener : MonoBehaviour
                     break;
                 }
 
-                // Converte os bytes recebidos em uma string
-                string receivedMessage = Encoding.UTF8.GetString(receiveBuffer, 0, bytesRead);
-
-                // Imprime a mensagem no console do Unity
-                Debug.Log($"Mensagem recebida: {receivedMessage}");
-
-
                 UnityMainThreadDispatcher.Instance().Enqueue(() =>
                 {
-                    manager.AddStrike(receivedMessage);
+                    HandleData(receiveBuffer, bytesRead);
                 });
             }
         }
@@ -70,24 +59,13 @@ public class Listener : MonoBehaviour
         }
     }
 
-    // Método para enviar mensagens ao servidor (opcional)
-    private void SendMessageToServer(string message)
-    {
-        try
-        {
-            byte[] messageBytes = Encoding.UTF8.GetBytes(message);
-            stream.Write(messageBytes, 0, messageBytes.Length);
-        }
-        catch (Exception e)
-        {
-            Debug.LogError($"Erro ao enviar mensagem: {e.Message}");
-        }
-    }
-
     private void OnDestroy()
     {
         // Fecha a conexão quando o objeto for destruído
         if (client != null)
             client.Close();
     }
+
+    public abstract void HandleData(byte[] receiveBuffer, int bytesRead);
+
 }

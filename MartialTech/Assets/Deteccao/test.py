@@ -1,12 +1,29 @@
-import math
-
 import Soco, Cotovelada, Cruzado, InicialPosition
 from cvzone.PoseModule import PoseDetector
 import cv2
 from connection import UnityServer
+import threading
 
-unity_server = UnityServer("127.0.0.1", 25002)
-unity_server.start()
+host = "127.0.0.1"
+
+def iniciar_servidor_golpes(host, port):
+    global golpes_server
+    golpes_server = UnityServer(host, port)
+    golpes_server.start()
+
+def iniciar_servidor_imagens(host, port):
+    global imagens_server
+    imagens_server = UnityServer(host, port)
+    imagens_server.start()
+
+# Threads para iniciar os servidores
+thread1 = threading.Thread(target=lambda: iniciar_servidor_golpes(host, 25002))
+thread2 = threading.Thread(target=lambda: iniciar_servidor_imagens(host, 25003))
+
+# Inicia as threads
+thread1.start()
+thread2.start()
+
 cap = cv2.VideoCapture(0)
 
 detector = PoseDetector(staticMode=False,
@@ -36,6 +53,13 @@ while True:
     # Set draw=True to draw the landmarks and bounding box on the image
     lmList, bboxInfo = detector.findPosition(img, draw=True, bboxWithHands=True)
 
+    imgatual = img.copy()
+
+    if imagens_server.is_connected:
+        _, img_encoded = cv2.imencode(".jpg", imgatual)
+
+        imagens_server.send_image(img_encoded)
+        
     # Check if any body landmarks are detected
     if lmList:
         # Get the center of the bounding box around the body
@@ -43,8 +67,6 @@ while True:
 
         # Draw a circle at the center of the bounding box
         cv2.circle(img, center, 5, (255, 0, 255), cv2.FILLED)
-
-        imgatual = img.copy()
 
         imgatual, ehsocoesq, ehsocodir = Soco.ehsoco(img, lmList, detector)
 
@@ -57,16 +79,16 @@ while True:
 
         if ( ehsocoesq or ehsocodir ) and atualestado == 'estliberado':
             print("SOCO DADO")
-            unity_server.send_message("soco")
+            golpes_server.send_message("soco")
             atualestado = 'estsoco'
         if ( ehcotoveladaesq or ehcotoveladadir ) and atualestado == 'estliberado':
             print("COTOVELADA DADA")
-            unity_server.send_message("cotovelada")
+            golpes_server.send_message("cotovelada")
             atualestado = 'estcotovelada'
         if ( ehcruzadoesq or ehcruzadodir ) and atualestado == 'estliberado':
             print("CRUZADO DADO")
             atualestado = 'estcruzado'
-            unity_server.send_message("cruzado")
+            golpes_server.send_message("cruzado")
         if ( ehposinicialesq and ehposinicialdir ) and atualestado != 'estliberado':
             print("ESTADO inicial")
             atualestado = 'estliberado'
@@ -76,7 +98,7 @@ while True:
             atualestado = 'estliberado'
         
     # Display the frame in a window
-    # cv2.imshow("Image", imgatual)
+    cv2.imshow("Image", imgatual)
 
     # Wait for 1 millisecond between each frame
-    cv2.waitKey(1)
+    cv2.waitKey(20)
