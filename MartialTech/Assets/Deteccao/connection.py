@@ -35,6 +35,4 @@ class UnityServer:
         size = struct.pack("!L", len(data))
         # print(len(data))
 
-
-        self.client_socket.sendall(size)
-        self.client_socket.sendall(data)
+        self.client_socket.sendall(image_encoded)

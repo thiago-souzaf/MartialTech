@@ -8,7 +8,7 @@ public abstract class Listener : MonoBehaviour
 {
     private TcpClient client;
     private NetworkStream stream;
-    private byte[] receiveBuffer = new byte[1024];
+    private byte[] receiveBuffer = new byte[101000];
 
     // Endereco IP e porta do servidor
     private string serverIP = "127.0.0.1";
