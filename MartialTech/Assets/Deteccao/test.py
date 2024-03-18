@@ -54,7 +54,12 @@ while True:
 
     imgatual = img.copy()
     _, img_encoded = cv2.imencode(".jpg", img)
-    imagens_server.send_image(img_encoded)
+    try:
+        imagens_server.send_image(img_encoded)
+    except Exception as e:
+        print("Falha ao enviar: ", e)
+        imagens_server.disconnect()
+        golpes_server.disconnect()
 
     # Check if any body landmarks are detected
     if lmList:
