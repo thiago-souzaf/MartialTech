@@ -32,7 +32,7 @@ public class SelectionMenu : MonoBehaviour
 
     private void StartPython()
     {
-        string pythonScriptPath = "E:\\Dev\\Unity-projects\\Projeto-RV\\MartialTech\\Assets\\Deteccao\\test.py";
+        string pythonScriptPath = Application.streamingAssetsPath + "/Deteccao/test.py";
 
         ProcessStartInfo startInfo = new ProcessStartInfo();
         startInfo.FileName = "python";
